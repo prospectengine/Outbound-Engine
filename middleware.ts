@@ -1,10 +1,11 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { getSafeRedirectUrl } from "@/lib/utils";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
-  })
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,26 +13,51 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({
             request,
-          })
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
-          )
+          );
         },
       },
     }
-  )
+  );
 
   // Refresh session if expired - required for Server Components
-  // https://supabase.com/docs/guides/auth/server-side/nextjs
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return supabaseResponse
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute = pathname === "/login" || pathname === "/signup";
+  const isAuthCallback = pathname.startsWith("/auth/callback");
+
+  // Route protection: Unauthenticated users redirected to /login
+  if (!user && !isAuthRoute && !isAuthCallback) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
+    const fullPath = pathname + request.nextUrl.search;
+    if (fullPath !== "/" && fullPath !== "") {
+      redirectUrl.searchParams.set("next", fullPath);
+    }
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Authenticated users accessing login/signup redirected to dashboard
+  if (user && isAuthRoute) {
+    const nextParam = request.nextUrl.searchParams.get("next");
+    const safeNext = getSafeRedirectUrl(nextParam, "/");
+    return NextResponse.redirect(new URL(safeNext, request.url));
+  }
+
+  return supabaseResponse;
 }
 
 export const config = {
@@ -43,6 +69,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
-}
+};

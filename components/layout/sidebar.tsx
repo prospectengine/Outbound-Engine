@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UserMenu } from "@/components/layout/user-menu";
 
 const NAV_ITEMS = [
   {
@@ -105,8 +106,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Info Box */}
-      <div className="p-4 border-t border-zinc-800">
+      {/* Footer Info Box & User Menu */}
+      <div className="p-4 border-t border-zinc-800 space-y-3">
+        <UserMenu />
         <div className="rounded-lg bg-zinc-800/50 p-3 border border-zinc-700/50 text-xs">
           <div className="flex items-center text-zinc-200 font-medium mb-1">
             <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
