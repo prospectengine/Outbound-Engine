@@ -11,14 +11,19 @@ import {
   MessageSquare,
   StopCircle,
 } from "lucide-react";
-import {
-  MOCK_METRICS,
-  MOCK_EMAILS_FOR_APPROVAL,
-  MOCK_ACTIVITIES,
-  MOCK_CAMPAIGNS,
-} from "@/lib/mock-data";
+import { getDashboardMetrics } from "@/services/metrics-service";
+import { getPendingEmails } from "@/services/email-service";
+import { getRecentActivities } from "@/services/activity-service";
+import { getCampaigns } from "@/services/campaign-service";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const [metrics, pendingEmails, activities, campaigns] = await Promise.all([
+    getDashboardMetrics(),
+    getPendingEmails(),
+    getRecentActivities(10),
+    getCampaigns(),
+  ]);
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <Header
@@ -31,38 +36,38 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <StatCard
             title="Total Leads"
-            value={MOCK_METRICS.totalLeads}
+            value={metrics.totalLeads}
             icon={Users}
             subtitle="Across all campaigns"
           />
           <StatCard
             title="Active Campaigns"
-            value={MOCK_METRICS.activeCampaigns}
+            value={metrics.activeCampaigns}
             icon={Target}
             subtitle="Currently enrolling"
           />
           <StatCard
             title="Awaiting Approval"
-            value={MOCK_METRICS.emailsAwaitingApproval}
+            value={metrics.emailsAwaitingApproval}
             icon={Clock}
             subtitle="Passed 50-pt QA"
             highlight={true}
           />
           <StatCard
             title="Emails Sent"
-            value={MOCK_METRICS.emailsSent}
+            value={metrics.emailsSent}
             icon={Send}
             subtitle="Dispatched via Gmail"
           />
           <StatCard
             title="Replies"
-            value={MOCK_METRICS.replies}
+            value={metrics.replies}
             icon={MessageSquare}
             subtitle="Inbound responses"
           />
           <StatCard
             title="Sequences Stopped"
-            value={MOCK_METRICS.sequencesStopped}
+            value={metrics.sequencesStopped}
             icon={StopCircle}
             subtitle="Reply or manual stop"
           />
@@ -70,12 +75,12 @@ export default function DashboardPage() {
 
         {/* Core Operational Section: Approval Queue & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <ApprovalQueuePreview emails={MOCK_EMAILS_FOR_APPROVAL} />
-          <RecentActivityList activities={MOCK_ACTIVITIES} />
+          <ApprovalQueuePreview emails={pendingEmails} />
+          <RecentActivityList activities={activities} />
         </div>
 
         {/* Campaign Status Preview */}
-        <CampaignStatusPreview campaigns={MOCK_CAMPAIGNS} />
+        <CampaignStatusPreview campaigns={campaigns} />
       </div>
     </div>
   );

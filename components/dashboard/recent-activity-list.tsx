@@ -55,34 +55,47 @@ export function RecentActivityList({ activities }: RecentActivityListProps) {
         <CardTitle className="text-base">Recent Activity Log</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {activities.map((act) => (
-          <div
-            key={act.id}
-            className="flex items-start space-x-3 text-xs pb-3 border-b border-zinc-100 last:border-0 last:pb-0"
-          >
-            <div className="mt-0.5 w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center shrink-0">
-              {getIcon(act.activity_type)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-zinc-900">
-                  {getLabel(act.activity_type)}
-                </span>
-                <span className="text-[10px] text-zinc-400">
-                  {formatDate(act.created_at)}
-                </span>
-              </div>
-              <p className="text-zinc-600 text-[11px] truncate mt-0.5">
-                {act.lead_name}
-              </p>
-              {typeof act.metadata.snippet === "string" && (
-                <p className="mt-1 text-[11px] text-zinc-700 bg-emerald-50/60 p-1.5 rounded border border-emerald-100 italic">
-                  &ldquo;{act.metadata.snippet}&rdquo;
-                </p>
-              )}
-            </div>
+        {activities.length === 0 ? (
+          <div className="text-center py-8 text-zinc-500 space-y-2">
+            <Search className="w-6 h-6 text-zinc-300 mx-auto" />
+            <p className="text-xs font-medium text-zinc-600">
+              No activity recorded yet
+            </p>
+            <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+              Lead enrollments, QA scores, approvals, and dispatch events will
+              stream here.
+            </p>
           </div>
-        ))}
+        ) : (
+          activities.map((act) => (
+            <div
+              key={act.id}
+              className="flex items-start space-x-3 text-xs pb-3 border-b border-zinc-100 last:border-0 last:pb-0"
+            >
+              <div className="mt-0.5 w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center shrink-0">
+                {getIcon(act.activity_type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-900">
+                    {getLabel(act.activity_type)}
+                  </span>
+                  <span className="text-[10px] text-zinc-400">
+                    {formatDate(act.created_at)}
+                  </span>
+                </div>
+                <p className="text-zinc-600 text-[11px] truncate mt-0.5">
+                  {act.lead_name}
+                </p>
+                {typeof act.metadata.snippet === "string" && (
+                  <p className="mt-1 text-[11px] text-zinc-700 bg-emerald-50/60 p-1.5 rounded border border-emerald-100 italic">
+                    &ldquo;{act.metadata.snippet}&rdquo;
+                  </p>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );

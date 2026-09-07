@@ -1,20 +1,53 @@
 import { Header } from "@/components/layout/header";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_SEQUENCES } from "@/lib/mock-data";
-import { Layers, Clock } from "lucide-react";
+import { getSequences } from "@/services/sequence-service";
+import { Layers, Clock, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 const TOUCH_FRAMEWORK = [
-  { step: 1, name: "Relevance", purpose: "Trigger + Friction + Desired Outcome + Low-friction CTA" },
-  { step: 2, name: "Reframe", purpose: "Alternative problem perspective and consequence exploration" },
-  { step: 3, name: "Proof", purpose: "Verified customer metric and mechanism validation" },
-  { step: 4, name: "Insight", purpose: "Stand-alone valuable observation without asking for purchase" },
-  { step: 5, name: "Objection Removal", purpose: "Directly addressing common reasons for timing or bandwidth inaction" },
-  { step: 6, name: "Decision Point", purpose: "Easy-exit fork (Yes / No / Later / Wrong Person)" },
+  {
+    step: 1,
+    name: "Relevance",
+    purpose: "Trigger + Friction + Desired Outcome + Low-friction CTA",
+  },
+  {
+    step: 2,
+    name: "Reframe",
+    purpose: "Alternative problem perspective and consequence exploration",
+  },
+  {
+    step: 3,
+    name: "Proof",
+    purpose: "Verified customer metric and mechanism validation",
+  },
+  {
+    step: 4,
+    name: "Insight",
+    purpose: "Stand-alone valuable observation without asking for purchase",
+  },
+  {
+    step: 5,
+    name: "Objection Removal",
+    purpose: "Directly addressing common reasons for timing or bandwidth inaction",
+  },
+  {
+    step: 6,
+    name: "Decision Point",
+    purpose: "Easy-exit fork (Yes / No / Later / Wrong Person)",
+  },
 ];
 
-export default function SequencesPage() {
+export default async function SequencesPage() {
+  const sequences = await getSequences();
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <Header
@@ -33,12 +66,16 @@ export default function SequencesPage() {
                   The 6-Touch Progressive Sequence Model
                 </CardTitle>
               </div>
-              <Badge variant="outline" className="text-zinc-300 border-zinc-700 text-xs">
+              <Badge
+                variant="outline"
+                className="text-zinc-300 border-zinc-700 text-xs"
+              >
                 No &ldquo;Just Following Up&rdquo; Rule
               </Badge>
             </div>
             <CardDescription className="text-xs text-zinc-400">
-              Each follow-up touch introduces new business value, evidence, or reframed insights.
+              Each follow-up touch introduces new business value, evidence, or
+              reframed insights.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -51,7 +88,9 @@ export default function SequencesPage() {
                   <div className="flex items-center justify-between text-xs font-semibold text-zinc-200">
                     <span>Touch {touch.step}</span>
                   </div>
-                  <div className="text-xs font-bold text-white">{touch.name}</div>
+                  <div className="text-xs font-bold text-white">
+                    {touch.name}
+                  </div>
                   <p className="text-[11px] text-zinc-400 leading-snug">
                     {touch.purpose}
                   </p>
@@ -64,75 +103,117 @@ export default function SequencesPage() {
         {/* Active Sequences List */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Active Enrolled Sequences</CardTitle>
-            <CardDescription className="text-xs">
-              Live tracking of lead sequence cadences and reply detection halts
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">
+                  Active Enrolled Sequences
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Live tracking of lead sequence cadences and reply detection halts
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="font-mono text-xs">
+                {sequences.length} Enrolled
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3 px-4">Prospect</th>
-                    <th className="py-3 px-4">Campaign</th>
-                    <th className="py-3 px-4">Current Step</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Next Action</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200">
-                  {MOCK_SEQUENCES.map((seq) => (
-                    <tr key={seq.id} className="hover:bg-zinc-50/70 transition-colors">
-                      <td className="py-3.5 px-4 font-semibold text-zinc-900">
-                        {seq.lead_name}
-                        <div className="text-zinc-500 font-normal text-[11px]">
-                          {seq.lead_company}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-zinc-700">
-                        {seq.campaign_name}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                          Touch {seq.current_step} of 6
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <Badge
-                          variant={
-                            seq.status === "active"
-                              ? "success"
-                              : seq.status === "stopped_replied"
-                              ? "info"
-                              : "secondary"
-                          }
-                          className="capitalize text-[10px]"
-                        >
-                          {seq.status.replace("_", " ")}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4 text-zinc-600">
-                        {seq.next_action ? (
-                          <div className="flex items-center space-x-1 text-zinc-700 font-medium">
-                            <Clock className="w-3 h-3 text-zinc-400" />
-                            <span>{seq.next_action.replace("_", " ")}</span>
-                          </div>
-                        ) : (
-                          <span className="text-zinc-400 italic">None (Halted)</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <Button variant="ghost" size="sm" className="h-7 text-xs">
-                          Inspect
-                        </Button>
-                      </td>
+            {sequences.length === 0 ? (
+              <div className="text-center py-12 text-zinc-500 space-y-3">
+                <Layers className="w-10 h-10 text-zinc-300 mx-auto" />
+                <div className="font-medium text-zinc-700 text-sm">
+                  No sequences enrolled yet
+                </div>
+                <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                  Leads enrolled into campaigns will automatically progress
+                  through the 6-touch sequence cadence.
+                </p>
+                <Link href="/leads" className="inline-block mt-2">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    View Leads
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Prospect</th>
+                      <th className="py-3 px-4">Campaign</th>
+                      <th className="py-3 px-4">Current Step</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Next Action</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {sequences.map((seq) => (
+                      <tr
+                        key={seq.id}
+                        className="hover:bg-zinc-50/70 transition-colors"
+                      >
+                        <td className="py-3.5 px-4 font-semibold text-zinc-900">
+                          {seq.lead_name}
+                          <div className="text-zinc-500 font-normal text-[11px]">
+                            {seq.lead_company}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-zinc-700">
+                          {seq.campaign_name}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Badge
+                            variant="outline"
+                            className="font-mono text-[10px]"
+                          >
+                            Touch {seq.current_step} of 6
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Badge
+                            variant={
+                              seq.status === "active"
+                                ? "success"
+                                : seq.status === "stopped_replied"
+                                ? "info"
+                                : "secondary"
+                            }
+                            className="capitalize text-[10px]"
+                          >
+                            {seq.status.replace("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-4 text-zinc-600">
+                          {seq.next_action ? (
+                            <div className="flex items-center space-x-1 text-zinc-700 font-medium">
+                              <Clock className="w-3 h-3 text-zinc-400" />
+                              <span>{seq.next_action.replace("_", " ")}</span>
+                            </div>
+                          ) : (
+                            <span className="text-zinc-400 italic">
+                              None (Halted)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <Link href={`/research?leadId=${seq.lead_id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                            >
+                              Inspect
+                            </Button>
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

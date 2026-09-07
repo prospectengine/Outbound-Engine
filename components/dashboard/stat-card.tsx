@@ -19,18 +19,25 @@ export function StatCard({
   subtitle,
   icon: Icon,
   trend,
-  isPlaceholder = true,
+  isPlaceholder = false,
   highlight = false,
 }: StatCardProps) {
   return (
-    <Card className={cn("transition-all", highlight && "border-amber-200 bg-amber-50/20")}>
+    <Card
+      className={cn(
+        "transition-all",
+        highlight && "border-amber-200 bg-amber-50/20"
+      )}
+    >
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-zinc-500">{title}</span>
           <div
             className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center",
-              highlight ? "bg-amber-100 text-amber-700" : "bg-zinc-100 text-zinc-600"
+              highlight
+                ? "bg-amber-100 text-amber-700"
+                : "bg-zinc-100 text-zinc-600"
             )}
           >
             <Icon className="w-4 h-4" />
@@ -51,7 +58,9 @@ export function StatCard({
         {subtitle && (
           <p className="mt-1 text-xs text-zinc-500 flex items-center justify-between">
             <span>{subtitle}</span>
-            {trend && <span className="font-medium text-zinc-700">{trend}</span>}
+            {trend && (
+              <span className="font-medium text-zinc-700">{trend}</span>
+            )}
           </p>
         )}
       </CardContent>
