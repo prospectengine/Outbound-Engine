@@ -23,6 +23,28 @@ export interface UnknownAssumption {
   notes: string;
 }
 
+export interface EvidenceStructure {
+  observed_facts: ObservedFact[];
+  reasonable_inferences: ReasonableInference[];
+  unknowns: UnknownAssumption[];
+}
+
+export interface BusinessHypothesis {
+  trigger: string;
+  current_state?: string | null;
+  friction: string;
+  consequence?: string | null;
+  future_state?: string | null;
+  proof?: string | null;
+  cta?: string | null;
+  personalization_angle?: string | null;
+  trigger_source_type?: string | null;
+  trigger_source_title?: string | null;
+  trigger_source_url?: string | null;
+  trigger_source_date?: string | null;
+  trigger_notes?: string | null;
+}
+
 export interface ResearchProfile {
   id: string;
   lead_id: string;

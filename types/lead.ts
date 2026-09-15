@@ -58,3 +58,39 @@ export interface Account {
   created_at: string;
   updated_at: string;
 }
+
+export type ImportFailedStep =
+  | "validation"
+  | "duplicate_check"
+  | "account_resolution"
+  | "lead_creation"
+  | "sequence_creation"
+  | "activity_logging";
+
+export type ImportRowResult =
+  | {
+      row_number: number;
+      status: "created";
+      lead: Lead;
+    }
+  | {
+      row_number: number;
+      status: "duplicate";
+      email: string;
+      message: string;
+    }
+  | {
+      row_number: number;
+      status: "failed";
+      email?: string;
+      failed_step: ImportFailedStep;
+      error: string;
+    };
+
+export interface BatchImportResult {
+  total: number;
+  created_count: number;
+  duplicate_count: number;
+  failed_count: number;
+  results: ImportRowResult[];
+}

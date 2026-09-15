@@ -3,3 +3,4 @@ export * from "./campaign";
 export * from "./research";
 export * from "./email";
 export * from "./sequence";
+export * from "./actions";

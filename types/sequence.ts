@@ -34,16 +34,21 @@ export interface ActivityEvent {
   activity_type:
     | "lead_created"
     | "lead_imported"
+    | "research_started"
     | "research_completed"
+    | "research_failed"
     | "email_generated"
     | "qa_completed"
+    | "qa_regenerated"
     | "human_edited"
     | "email_approved"
     | "email_rejected"
     | "email_queued"
     | "email_sent"
+    | "email_send_failed"
     | "reply_detected"
     | "sequence_stopped"
+    | "sequence_resumed"
     | "sequence_completed";
   metadata: Record<string, unknown>;
   created_at: string;

@@ -5,7 +5,14 @@ import {
   ReasonableInference,
   UnknownAssumption,
 } from "@/types";
+import {
+  saveResearchProfileSchema,
+  SaveResearchProfileInput,
+} from "@/lib/research";
+import { logActivity } from "@/services/activity-service";
+import { Json } from "@/types/database.types";
 import { ServiceError } from "./errors";
+
 
 type ResearchWithRelations = {
   id: string;
@@ -371,4 +378,212 @@ export async function getResearchProfiles(): Promise<ResearchProfile[]> {
   return (data as unknown as ResearchWithRelations[]).map(
     mapRowToResearchProfile
   );
+}
+
+/**
+ * Persists a structured research profile for a lead.
+ * Enforces authenticated session and lead ownership.
+ * Performs an INSERT if no profile exists, or an UPDATE if one exists,
+ * respecting the database's UNIQUE(lead_id) constraint.
+ * Logs a 'research_completed' activity upon successful persistence.
+ */
+export async function saveResearchProfile(
+  leadId: string,
+  input: Omit<SaveResearchProfileInput, "lead_id">
+): Promise<ResearchProfile> {
+  const supabase = await createClient();
+
+  // 1. Authenticate user
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new ServiceError(
+      "research-service",
+      "Authentication required to save research profile",
+      "UNAUTHENTICATED"
+    );
+  }
+
+  // 2. Validate input schema
+  const validated = saveResearchProfileSchema.parse({
+    ...input,
+    lead_id: leadId,
+  });
+
+  // 3. Verify lead belongs to authenticated user
+  const { data: lead, error: leadError } = await supabase
+    .from("leads")
+    .select("id, user_id, campaign_id, account_id")
+    .eq("id", leadId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (leadError || !lead) {
+    throw new ServiceError(
+      "research-service",
+      `Lead ${leadId} not found or not owned by user`,
+      "LEAD_NOT_FOUND"
+    );
+  }
+
+  const targetAccountId = validated.account_id ?? lead.account_id ?? null;
+
+  // 4. Check if research profile already exists for this lead
+  const { data: existingProfile, error: checkError } = await supabase
+    .from("research")
+    .select("id")
+    .eq("lead_id", leadId)
+    .maybeSingle();
+
+  if (checkError) {
+    throw new ServiceError(
+      "research-service",
+      `Failed to check existing research profile: ${checkError.message}`,
+      checkError.code,
+      checkError.details
+    );
+  }
+
+  let savedRow: ResearchWithRelations | null = null;
+
+  const payload = {
+    account_id: targetAccountId,
+    observed_facts: validated.observed_facts as unknown as Json,
+    reasonable_inferences: validated.reasonable_inferences as unknown as Json,
+    unknowns: validated.unknowns as unknown as Json,
+    business_trigger: validated.business_trigger ?? null,
+    trigger_source_type: validated.trigger_source_type ?? null,
+    trigger_source_title: validated.trigger_source_title ?? null,
+    trigger_source_url: validated.trigger_source_url ?? null,
+    trigger_source_date: validated.trigger_source_date ?? null,
+    trigger_notes: validated.trigger_notes ?? null,
+    problem_hypothesis: validated.problem_hypothesis ?? null,
+    business_consequence: validated.business_consequence ?? null,
+    future_state: validated.future_state ?? null,
+    personalization_angle: validated.personalization_angle ?? null,
+    research_status: validated.research_status,
+  };
+
+  const selectQuery = `
+    id,
+    lead_id,
+    account_id,
+    business_trigger,
+    trigger_source_type,
+    trigger_source_title,
+    trigger_source_url,
+    trigger_source_date,
+    trigger_notes,
+    problem_hypothesis,
+    business_consequence,
+    future_state,
+    personalization_angle,
+    research_status,
+    observed_facts,
+    reasonable_inferences,
+    unknowns,
+    created_at,
+    updated_at,
+    leads (
+      first_name,
+      last_name,
+      accounts (
+        company_name
+      )
+    ),
+    accounts (
+      company_name
+    )
+  `;
+
+  if (existingProfile) {
+    // UPDATE existing record
+    const { data: updated, error: updateError } = await supabase
+      .from("research")
+      .update(payload)
+      .eq("id", existingProfile.id)
+      .select(selectQuery)
+      .single();
+
+    if (updateError) {
+      throw new ServiceError(
+        "research-service",
+        `Failed to update research profile for lead ${leadId}: ${updateError.message}`,
+        updateError.code,
+        updateError.details
+      );
+    }
+    savedRow = updated as unknown as ResearchWithRelations;
+  } else {
+    // INSERT new record
+    const { data: inserted, error: insertError } = await supabase
+      .from("research")
+      .insert({
+        ...payload,
+        lead_id: leadId,
+      })
+      .select(selectQuery)
+      .single();
+
+    if (insertError) {
+      // Catch concurrent race condition (uq_research_lead_id)
+      if (insertError.code === "23505") {
+        const { data: fallbackUpdated, error: fallbackErr } = await supabase
+          .from("research")
+          .update(payload)
+          .eq("lead_id", leadId)
+          .select(selectQuery)
+          .single();
+
+        if (fallbackErr) {
+          throw new ServiceError(
+            "research-service",
+            `Failed to persist research profile on conflict: ${fallbackErr.message}`,
+            fallbackErr.code,
+            fallbackErr.details
+          );
+        }
+        savedRow = fallbackUpdated as unknown as ResearchWithRelations;
+      } else {
+        throw new ServiceError(
+          "research-service",
+          `Failed to create research profile for lead ${leadId}: ${insertError.message}`,
+          insertError.code,
+          insertError.details
+        );
+      }
+    } else {
+      savedRow = inserted as unknown as ResearchWithRelations;
+    }
+  }
+
+  if (!savedRow) {
+    throw new ServiceError(
+      "research-service",
+      `Failed to persist research profile for lead ${leadId}: empty response`,
+      "INTERNAL_ERROR"
+    );
+  }
+
+  // 5. Log research activity
+  try {
+    await logActivity({
+      lead_id: leadId,
+      campaign_id: lead.campaign_id,
+      activity_type: "research_completed",
+      metadata: {
+        observed_facts_count: validated.observed_facts.length,
+        reasonable_inferences_count: validated.reasonable_inferences.length,
+        unknowns_count: validated.unknowns.length,
+        business_trigger: validated.business_trigger,
+      },
+    });
+  } catch (logErr) {
+    console.error("Failed to log research_completed activity:", logErr);
+  }
+
+  return mapRowToResearchProfile(savedRow);
 }

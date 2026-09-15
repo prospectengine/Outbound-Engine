@@ -3,11 +3,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getLeads } from "@/services/lead-service";
-import { Plus, Upload } from "lucide-react";
+import { getCampaigns } from "@/services/campaign-service";
+import { AddLeadDialog } from "@/components/leads/add-lead-dialog";
+import { ImportLeadsDialog } from "@/components/leads/import-leads-dialog";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export default async function LeadsPage() {
-  const leads = await getLeads();
+  const [leads, campaigns] = await Promise.all([
+    getLeads(),
+    getCampaigns(),
+  ]);
+
+  const campaignOptions = campaigns.map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -24,14 +35,8 @@ export default async function LeadsPage() {
             </Badge>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" className="text-xs">
-              <Upload className="w-3.5 h-3.5 mr-1.5" />
-              Import CSV / Sheets
-            </Button>
-            <Button size="sm" className="text-xs">
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Add Lead
-            </Button>
+            <ImportLeadsDialog campaigns={campaignOptions} />
+            <AddLeadDialog campaigns={campaignOptions} />
           </div>
         </div>
 
@@ -49,18 +54,13 @@ export default async function LeadsPage() {
                 begin research and sequence progression.
               </p>
               <div className="pt-2 flex items-center justify-center space-x-2">
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />
-                  Import CSV / Sheets
-                </Button>
-                <Button size="sm" className="text-xs">
-                  <Plus className="w-3.5 h-3.5 mr-1.5" />
-                  Add Lead
-                </Button>
+                <ImportLeadsDialog campaigns={campaignOptions} />
+                <AddLeadDialog campaigns={campaignOptions} />
               </div>
             </div>
           </Card>
         ) : (
+
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">

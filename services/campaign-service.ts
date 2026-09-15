@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Campaign, CampaignStatus } from "@/types";
+import { CreateCampaignInput } from "@/lib/validations/campaign";
 import { ServiceError } from "./errors";
 
 type CampaignWithRelations = {
@@ -154,4 +155,70 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
   }
 
   return mapRowToCampaign(data as unknown as CampaignWithRelations);
+}
+
+/**
+ * Creates a new campaign record for the authenticated user.
+ * Injects user_id strictly from the authenticated session.
+ */
+export async function createCampaign(
+  input: CreateCampaignInput
+): Promise<Campaign> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new ServiceError(
+      "campaign-service",
+      "Authentication required to create a campaign",
+      authError?.code,
+      authError
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      user_id: user.id,
+      name: input.name,
+      description: input.description ?? null,
+      icp_description: input.icp_description,
+      offer_description: input.offer_description,
+      target_region: input.target_region ?? null,
+      campaign_objective: input.campaign_objective,
+      status: input.status ?? "active",
+    })
+    .select(`
+      id,
+      user_id,
+      name,
+      description,
+      icp_description,
+      offer_description,
+      target_region,
+      campaign_objective,
+      status,
+      created_at,
+      updated_at
+    `)
+    .single();
+
+  if (error) {
+    throw new ServiceError(
+      "campaign-service",
+      `Failed to create campaign: ${error.message}`,
+      error.code,
+      error.details
+    );
+  }
+
+  return mapRowToCampaign({
+    ...data,
+    leads: [],
+    sequences: [],
+  });
 }

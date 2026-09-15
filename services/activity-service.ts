@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ActivityEvent } from "@/types";
+import { Json } from "@/types/database.types";
 import { ServiceError } from "./errors";
 
 type ActivityWithRelations = {
@@ -31,16 +32,21 @@ function mapRowToActivityEvent(row: ActivityWithRelations): ActivityEvent {
   const validActivityTypes: Array<ActivityEvent["activity_type"]> = [
     "lead_created",
     "lead_imported",
+    "research_started",
     "research_completed",
+    "research_failed",
     "email_generated",
     "qa_completed",
+    "qa_regenerated",
     "human_edited",
     "email_approved",
     "email_rejected",
     "email_queued",
     "email_sent",
+    "email_send_failed",
     "reply_detected",
     "sequence_stopped",
+    "sequence_resumed",
     "sequence_completed",
   ];
 
@@ -158,4 +164,85 @@ export async function getActivitiesByLeadId(
   return (data as unknown as ActivityWithRelations[]).map(
     mapRowToActivityEvent
   );
+}
+
+export interface LogActivityInput {
+  lead_id: string;
+  activity_type: ActivityEvent["activity_type"];
+  campaign_id?: string | null;
+  email_id?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Appends an activity event record for a lead.
+ * Derives user_id directly from the authenticated session.
+ * Enforces lead_id presence per database NOT NULL constraint.
+ */
+export async function logActivity(
+  input: LogActivityInput
+): Promise<ActivityEvent> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new ServiceError(
+      "activity-service",
+      "Authentication required to log activity",
+      authError?.code,
+      authError
+    );
+  }
+
+  if (!input.lead_id || input.lead_id.trim().length === 0) {
+    throw new ServiceError(
+      "activity-service",
+      "lead_id is strictly required to log activity",
+      "VALIDATION_ERROR"
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("activities")
+    .insert({
+      user_id: user.id,
+      lead_id: input.lead_id,
+      campaign_id: input.campaign_id ?? null,
+      email_id: input.email_id ?? null,
+      activity_type: input.activity_type,
+      metadata: (input.metadata ?? {}) as Json,
+    })
+    .select(`
+      id,
+      user_id,
+      lead_id,
+      campaign_id,
+      email_id,
+      activity_type,
+      metadata,
+      created_at,
+      leads (
+        first_name,
+        last_name,
+        accounts (
+          company_name
+        )
+      )
+    `)
+    .single();
+
+  if (error) {
+    throw new ServiceError(
+      "activity-service",
+      `Failed to log activity event: ${error.message}`,
+      error.code,
+      error.details
+    );
+  }
+
+  return mapRowToActivityEvent(data as unknown as ActivityWithRelations);
 }

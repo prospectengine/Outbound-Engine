@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCampaigns } from "@/services/campaign-service";
+import { CreateCampaignDialog } from "@/components/campaigns/create-campaign-dialog";
 import { Plus } from "lucide-react";
 
 export default async function CampaignsPage() {
@@ -26,10 +27,7 @@ export default async function CampaignsPage() {
           <Badge variant="outline" className="text-xs bg-white">
             {campaigns.length} Campaigns Configured
           </Badge>
-          <Button size="sm" className="text-xs">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Create Campaign
-          </Button>
+          <CreateCampaignDialog />
         </div>
 
         {campaigns.length === 0 ? (
@@ -46,10 +44,7 @@ export default async function CampaignsPage() {
                 and target region.
               </p>
               <div className="pt-2">
-                <Button size="sm" className="text-xs">
-                  <Plus className="w-3.5 h-3.5 mr-1.5" />
-                  Create Campaign
-                </Button>
+                <CreateCampaignDialog />
               </div>
             </div>
           </Card>

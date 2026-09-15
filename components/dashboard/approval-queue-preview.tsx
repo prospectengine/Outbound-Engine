@@ -1,3 +1,6 @@
+"use client";
+
+import * as React from "react";
 import { EmailDraft } from "@/types";
 import {
   Card,
@@ -8,119 +11,225 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import {
+  CheckCircle2,
+  ArrowRight,
+  Loader2,
+  XCircle,
+  Edit3,
+  AlertCircle,
+} from "lucide-react";
 import Link from "next/link";
+import { approveEmailAction } from "@/app/(dashboard)/actions/email-actions";
+import { EditEmailDialog } from "./edit-email-dialog";
+import { RejectEmailDialog } from "./reject-email-dialog";
 
 interface ApprovalQueuePreviewProps {
   emails: EmailDraft[];
 }
 
 export function ApprovalQueuePreview({ emails }: ApprovalQueuePreviewProps) {
+  const [approvingId, setApprovingId] = React.useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = React.useState<EmailDraft | null>(null);
+  const [rejectingEmail, setRejectingEmail] = React.useState<EmailDraft | null>(null);
+  const [actionError, setActionError] = React.useState<{
+    id: string;
+    message: string;
+  } | null>(null);
+
+  const handleApprove = async (emailId: string) => {
+    setActionError(null);
+    setApprovingId(emailId);
+
+    try {
+      const result = await approveEmailAction(emailId);
+      if (!result.success) {
+        setActionError({ id: emailId, message: result.error });
+      }
+    } catch (err) {
+      setActionError({
+        id: emailId,
+        message: err instanceof Error ? err.message : "Failed to approve email.",
+      });
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   return (
-    <Card className="col-span-full lg:col-span-2">
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <div>
-          <div className="flex items-center space-x-2">
-            <CardTitle className="text-base">Approval Queue</CardTitle>
-            <Badge variant="warning" className="text-[11px]">
-              {emails.length} Pending
-            </Badge>
-          </div>
-          <CardDescription className="text-xs mt-1">
-            Generated drafts evaluated ≥ 40/50 by 50-point QA, awaiting human review
-          </CardDescription>
-        </div>
-        <Link href="/leads">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs flex items-center"
-          >
-            <span>View All</span>
-            <ArrowRight className="w-3 h-3 ml-1" />
-          </Button>
-        </Link>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {emails.length === 0 ? (
-          <div className="text-center py-8 text-zinc-500 space-y-2">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-            <div className="font-medium text-zinc-700 text-sm">
-              No emails pending approval
+    <>
+      <Card className="col-span-full lg:col-span-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div>
+            <div className="flex items-center space-x-2">
+              <CardTitle className="text-base">Approval Queue</CardTitle>
+              <Badge variant="warning" className="text-[11px]">
+                {emails.length} Pending
+              </Badge>
             </div>
-            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
-              All generated drafts meeting QA thresholds will appear here for
-              review before dispatch.
-            </p>
+            <CardDescription className="text-xs mt-1">
+              Generated drafts evaluated ≥ 40/50 by 50-point QA, awaiting human review
+            </CardDescription>
           </div>
-        ) : (
-          emails.map((email) => (
-            <div
-              key={email.id}
-              className="p-4 rounded-lg border border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition-colors space-y-3"
+          <Link href="/leads">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-sm text-zinc-900">
-                    {email.lead_name}
-                  </span>
-                  <span className="text-xs text-zinc-500 ml-2">
-                    ({email.lead_company})
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="success" className="text-[10px]">
-                    QA Score: {email.qa_score}/50
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px] capitalize">
-                    Touch {email.step_number} • {email.strategic_purpose}
-                  </Badge>
-                </div>
+              <span>View All Leads</span>
+              <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {emails.length === 0 ? (
+            <div className="text-center py-8 text-zinc-500 space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+              <div className="font-medium text-zinc-700 text-sm">
+                No emails pending approval
               </div>
-
-              <div className="bg-white p-3 rounded border border-zinc-200/80 text-xs text-zinc-800 font-mono space-y-1">
-                <div className="text-zinc-500 font-sans font-medium text-[11px]">
-                  Subject: <span className="text-zinc-900">{email.subject_line}</span>
-                </div>
-                <div className="whitespace-pre-line text-zinc-700 font-sans text-xs pt-1">
-                  {email.body_generated}
-                </div>
-                {email.ps_text && (
-                  <div className="text-zinc-500 font-sans text-[11px] pt-1 italic">
-                    {email.ps_text}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-zinc-400">
-                  Generated:{" "}
-                  {new Date(email.generated_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs text-zinc-600"
-                  >
-                    Edit Copy
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Approve Draft
-                  </Button>
-                </div>
-              </div>
+              <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+                All generated drafts meeting QA thresholds will appear here for
+                human review and approval.
+              </p>
             </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            emails.map((email) => {
+              const isApproving = approvingId === email.id;
+              const hasError = actionError?.id === email.id;
+              const displayText = email.body_approved || email.body_generated;
+              const isEdited = email.approval_status === "edited";
+
+              return (
+                <div
+                  key={email.id}
+                  className="p-4 rounded-lg border border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition-colors space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-sm text-zinc-900">
+                        {email.lead_name}
+                      </span>
+                      <span className="text-xs text-zinc-500 ml-2">
+                        ({email.lead_company})
+                      </span>
+                      {isEdited && (
+                        <Badge variant="secondary" className="text-[10px] ml-2">
+                          Human Edited
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="success" className="text-[10px]">
+                        QA Score: {email.qa_score ?? "—"}/50
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] capitalize">
+                        Touch {email.step_number} • {email.strategic_purpose}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {hasError && (
+                    <div className="p-2.5 bg-rose-50 border border-rose-200 rounded text-xs text-rose-700 flex items-center space-x-2">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{actionError.message}</span>
+                    </div>
+                  )}
+
+                  <div className="bg-white p-3 rounded border border-zinc-200/80 text-xs text-zinc-800 font-mono space-y-1">
+                    <div className="text-zinc-500 font-sans font-medium text-[11px]">
+                      Subject:{" "}
+                      <span className="text-zinc-900 font-semibold">
+                        {email.subject_line}
+                      </span>
+                    </div>
+                    {email.preview_text && (
+                      <div className="text-zinc-400 font-sans text-[11px]">
+                        Preview: {email.preview_text}
+                      </div>
+                    )}
+                    <div className="whitespace-pre-line text-zinc-700 font-sans text-xs pt-1 leading-relaxed">
+                      {displayText}
+                    </div>
+                    {email.ps_text && (
+                      <div className="text-zinc-500 font-sans text-[11px] pt-1 italic">
+                        {email.ps_text}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-zinc-400">
+                      Generated:{" "}
+                      {new Date(email.generated_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setRejectingEmail(email)}
+                        disabled={isApproving}
+                        className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                      >
+                        <XCircle className="w-3 h-3 mr-1" />
+                        Reject
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingEmail(email)}
+                        disabled={isApproving}
+                        className="h-7 text-xs text-zinc-700"
+                      >
+                        <Edit3 className="w-3 h-3 mr-1" />
+                        Edit Copy
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(email.id)}
+                        disabled={isApproving}
+                        className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        {isApproving ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                            Approving...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Approve Draft
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {editingEmail && (
+        <EditEmailDialog
+          email={editingEmail}
+          isOpen={!!editingEmail}
+          onClose={() => setEditingEmail(null)}
+        />
+      )}
+
+      {rejectingEmail && (
+        <RejectEmailDialog
+          email={rejectingEmail}
+          isOpen={!!rejectingEmail}
+          onClose={() => setRejectingEmail(null)}
+        />
+      )}
+    </>
   );
 }
