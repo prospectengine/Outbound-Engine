@@ -1,0 +1,59 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    name: Ping Supabase Database
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Send Keepalive Ping via Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "::error::Missing Supabase URL secret (NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL)."
+            exit 1
+          fi
+
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Missing Supabase Anon Key secret (NEXT_PUBLIC_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY)."
+            exit 1
+          fi
+
+          # Normalize URL (remove trailing slash if present)
+          CLEAN_URL="${SUPABASE_URL%/}"
+          ENDPOINT="${CLEAN_URL}/rest/v1/health_check?id=eq.1&select=id"
+
+          echo "Sending keepalive request to: ${CLEAN_URL}/rest/v1/health_check?id=eq.1&select=id"
+
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X GET "$ENDPOINT" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Accept: application/json")
+
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+
+          echo "HTTP Status: ${HTTP_STATUS}"
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "::error::Supabase keepalive request failed with HTTP status ${HTTP_STATUS}"
+            echo "Response payload: ${HTTP_BODY}"
+            exit 1
+          fi
+
+          # Verify response contains expected health_check record
+          if [[ "$HTTP_BODY" != *"\"id\":1"* && "$HTTP_BODY" != *'"id": 1'* ]]; then
+            echo "::error::Unexpected response payload: ${HTTP_BODY}"
+            exit 1
+          fi
+
+          echo "Keepalive check succeeded. Supabase project is active."
