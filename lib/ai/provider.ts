@@ -99,7 +99,7 @@ export async function callAIProvider(
   const model =
     options?.model ||
     process.env.NVIDIA_NIM_MODEL ||
-    "nvidia/nemotron-3-8b-chat";
+    "openai/gpt-oss-20b";
 
   const timeoutMs = options?.timeoutMs ?? 30000;
   const temperature = options?.temperature ?? 0.3;
